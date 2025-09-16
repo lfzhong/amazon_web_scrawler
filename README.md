@@ -1,38 +1,88 @@
 ## Amazon Web Crawler
 
-Minimal Flask backend that scrapes Amazon search results and product reviews.
+A full-stack web application for searching Amazon products and scraping detailed reviews. Features a Flask backend API, web-based frontend interface, and export functionality for review data.
 
-### Quick start
+### Features
 
-1. Create and activate a virtualenv (optional if you already have one):
-   - macOS/Linux:
-     ```bash
-     python3 -m venv venv && . venv/bin/activate
-     ```
+- **Product Search**: Search Amazon for products by keyword
+- **Review Scraping**: Extract detailed reviews from product pages with optional star rating filtering
+- **Web Interface**: User-friendly frontend for searching and viewing results
+- **Data Export**: Export scraped reviews to Excel and CSV formats
+- **Automated Setup**: One-click launcher script that handles environment setup
+
+### Quick Start
+
+1. **Clone the repository** (if not already done):
+   ```bash
+   git clone https://github.com/lfzhong/amazon_web_scrawler.git
+   cd amazon_web_scrawler
+   ```
+
+2. **Run the application**:
+   ```bash
+   python run.py
+   ```
+
+   This will:
+   - Check for virtual environment activation
+   - Install Python dependencies
+   - Install Playwright browsers
+   - Start the backend server on `http://localhost:5001`
+   - Open the frontend in your default browser
+
+### Manual Setup (Alternative)
+
+If you prefer manual setup:
+
+1. Create and activate a virtual environment:
+   ```bash
+   python3 -m venv venv && source venv/bin/activate
+   ```
+
 2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-3. Run the server:
+
+3. Install Playwright browsers:
    ```bash
-   FLASK_APP=backend.app:app FLASK_ENV=development flask run --host 127.0.0.1 --port 5000
+   playwright install
    ```
 
-### API
+4. Start the backend:
+   ```bash
+   python backend/app.py
+   ```
 
-- `GET /search?keyword=<term>`: Returns up to 3 product links for the search term.
-- `GET /reviews?url=<product_url>&stars=<1-5 (optional)>`: Scrapes reviews from the given product URL, optionally filtering by star rating.
+5. Open `index.html` in your browser to access the frontend.
 
-Example requests:
+### API Endpoints
+
+The Flask backend provides the following REST API endpoints:
+
+- `GET /search?keyword=<term>`: Returns up to 3 product links for the search term
+- `GET /reviews?url=<product_url>&stars=<1-5 (optional)>`: Scrapes reviews from the given product URL, optionally filtering by star rating
+
+Example API requests:
 ```bash
-curl 'http://127.0.0.1:5000/search?keyword=wireless%20earbuds'
+curl 'http://127.0.0.1:5001/search?keyword=wireless%20earbuds'
 
-curl 'http://127.0.0.1:5000/reviews?url=https://www.amazon.com/dp/B07FZ8S74R'
+curl 'http://127.0.0.1:5001/reviews?url=https://www.amazon.com/dp/B07FZ8S74R'
 
-curl 'http://127.0.0.1:5000/reviews?url=https://www.amazon.com/dp/B07FZ8S74R&stars=5'
+curl 'http://127.0.0.1:5001/reviews?url=https://www.amazon.com/dp/B07FZ8S74R&stars=5'
 ```
 
-### Testing notes for /reviews (2025-09-14)
+### Export Functionality
+
+After scraping reviews, data is automatically saved to Excel files in the `exports/` directory. Use the included export script to convert Excel files to CSV:
+
+```bash
+python export_reviews_csv.py
+```
+
+This extracts reviewer names, ratings, dates, review text, and helpful votes from all product sheets.
+
+### Testing Notes (Updated 2025-09-16)
 
 - Calling `/search` with "wireless earbuds" returned three Amazon browse/category URLs instead of product detail pages.
 - Calling `/reviews` with either those browse URLs or a known product detail URL returned HTTP 200 but 0 parsed reviews.
@@ -44,6 +94,32 @@ Suggested improvements:
 - Strengthen request headers (rotate User-Agent, add `Referer`, accept gzip/br) and consider basic cookie handling.
 - Consider backoff and clearer stop conditions for pagination.
 
-Note: Scraping Amazon may violate their Terms of Service. Use responsibly.
+### Project Structure
 
+```
+amazon_web_crawler/
+├── backend/
+│   └── app.py              # Flask API server
+├── exports/                # Exported review data (Excel/CSV)
+├── debug_pages/            # Debug snapshots for troubleshooting
+├── browser_data/           # Playwright browser data
+├── index.html              # Frontend interface
+├── script.js               # Frontend JavaScript
+├── styles.css              # Frontend styles
+├── run.py                  # Application launcher
+├── export_reviews_csv.py   # Excel to CSV converter
+├── requirements.txt        # Python dependencies
+└── README.md               # This file
+```
 
+### Dependencies
+
+- Flask: Web framework
+- Playwright: Browser automation for scraping
+- openpyxl: Excel file handling
+- requests: HTTP requests
+- pandas: Data processing
+
+### Disclaimer
+
+Note: Scraping Amazon may violate their Terms of Service. Use responsibly and consider Amazon's official APIs for production applications.

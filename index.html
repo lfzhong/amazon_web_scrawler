@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon Product Search</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Amazon Product Search</h1>
+            <p>Search for products and view detailed reviews</p>
+        </header>
+
+        <div class="search-section">
+            <form id="searchForm">
+                <div class="search-input-group">
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Enter product keyword (e.g., 'wireless headphones')"
+                        required
+                    >
+                    <button type="submit" id="searchButton">
+                        <span class="button-text">Search</span>
+                        <div class="spinner" id="loadingSpinner"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="resultsSection" class="results-section hidden">
+            <div id="searchSummary" class="search-summary"></div>
+            <div id="productsContainer" class="products-container"></div>
+        </div>
+
+        <div id="errorMessage" class="error-message hidden"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
