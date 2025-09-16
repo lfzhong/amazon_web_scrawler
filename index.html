@@ -25,6 +25,15 @@
                         placeholder="Enter product keyword (e.g., 'wireless headphones')"
                         required
                     >
+                    <div class="filter-group">
+                        <label for="ratingFilter" class="filter-label">Min Rating:</label>
+                        <select id="ratingFilter" class="rating-filter">
+                            <option value="">Any Rating</option>
+                            <option value="4">4+ Stars</option>
+                            <option value="4.5">4.5+ Stars</option>
+                            <option value="5">5 Stars Only</option>
+                        </select>
+                    </div>
                     <button type="submit" id="searchButton">
                         <span class="button-text">Search</span>
                         <div class="spinner" id="loadingSpinner"></div>

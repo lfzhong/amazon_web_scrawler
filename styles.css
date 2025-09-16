@@ -50,8 +50,9 @@ header p {
 .search-input-group {
     display: flex;
     gap: 15px;
-    max-width: 600px;
+    max-width: 700px;
     margin: 0 auto;
+    align-items: center;
 }
 
 #searchInput {
@@ -65,6 +66,40 @@ header p {
 }
 
 #searchInput:focus {
+    border-color: #667eea;
+}
+
+/* Rating Filter Styles */
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 150px;
+}
+
+.filter-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.rating-filter {
+    padding: 12px 15px;
+    font-size: 14px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    background: white;
+    outline: none;
+    transition: border-color 0.3s ease;
+    cursor: pointer;
+}
+
+.rating-filter:focus {
+    border-color: #667eea;
+}
+
+.rating-filter:hover {
     border-color: #667eea;
 }
 
@@ -344,6 +379,12 @@ header p {
 
     .search-input-group {
         flex-direction: column;
+        gap: 10px;
+    }
+
+    .filter-group {
+        min-width: auto;
+        width: 100%;
     }
 
     #searchButton {

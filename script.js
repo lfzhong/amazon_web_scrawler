@@ -1,6 +1,7 @@
 // DOM elements
 const searchForm = document.getElementById('searchForm');
 const searchInput = document.getElementById('searchInput');
+const ratingFilter = document.getElementById('ratingFilter');
 const searchButton = document.getElementById('searchButton');
 const loadingSpinner = document.getElementById('loadingSpinner');
 const resultsSection = document.getElementById('resultsSection');
@@ -73,13 +74,22 @@ async function handleSearch(event) {
     const keyword = searchInput.value.trim();
     if (!keyword) return;
 
+    // Get rating filter value
+    const minRating = ratingFilter.value;
+
     // Show loading state
     setLoadingState(true);
     hideError();
     hideResults();
 
     try {
-        const response = await fetch(`${API_BASE_URL}/search-reviews?q=${encodeURIComponent(keyword)}&max_products=3`);
+        // Build URL with parameters
+        let url = `${API_BASE_URL}/search-reviews?q=${encodeURIComponent(keyword)}&max_products=3`;
+        if (minRating) {
+            url += `&min_rating=${encodeURIComponent(minRating)}`;
+        }
+        
+        const response = await fetch(url);
         const data = await response.json();
 
         if (data.success) {
@@ -104,9 +114,13 @@ function setLoadingState(loading) {
 
     // Display search results
 function displayResults(data) {
+    // Get current rating filter value for display
+    const minRating = ratingFilter.value;
+    const ratingText = minRating ? ` (${minRating}+ stars only)` : '';
+    
     // Update search summary
     searchSummary.innerHTML = `
-        <h2>Search Results for "${data.search_term}"</h2>
+        <h2>Search Results for "${data.search_term}"${ratingText}</h2>
         <p>Found ${data.total_products} products with ${data.total_reviews} total reviews</p>
         ${data.excel_download_url ? `<p><a href="${data.excel_download_url}" target="_blank" class="download-all-btn">📊 Download All Reviews (Excel)</a></p>` : ''}
     `;

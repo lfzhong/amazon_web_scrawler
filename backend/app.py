@@ -1670,6 +1670,8 @@ def create_app() -> Flask:
     def search_reviews():
         keyword = (request.args.get("q") or "").strip()
         max_products = request.args.get("max_products", "3")
+        min_rating = request.args.get("min_rating", "")
+        
         try:
             max_products = int(max_products)
             if max_products > 5:  # Limit to prevent excessive scraping
@@ -1678,6 +1680,16 @@ def create_app() -> Flask:
                 max_products = 1
         except ValueError:
             max_products = 3
+            
+        # Parse min_rating if provided
+        min_rating_float = None
+        if min_rating:
+            try:
+                min_rating_float = float(min_rating)
+                if min_rating_float < 0 or min_rating_float > 5:
+                    return jsonify({"error": "Invalid rating filter. Must be between 0 and 5", "success": False}), 400
+            except ValueError:
+                return jsonify({"error": "Invalid rating filter format", "success": False}), 400
 
         if not keyword:
             return jsonify({"error": "Missing search keyword", "success": False}), 400
@@ -1759,9 +1771,60 @@ def create_app() -> Flask:
                         "error": "No products found"
                     }
 
-                # Concurrently fetch reviews for all products
-                logger.info(f"🔄 Fetching reviews for {len(basic_products)} products concurrently...")
-                tasks = [extract_product_reviews(product["url"], float('inf'), 3) for product in basic_products]
+                # First, get detailed product information to check ratings
+                logger.info(f"🔄 Fetching detailed product information for {len(basic_products)} products...")
+                detail_tasks = [extract_product_details(product["url"]) for product in basic_products]
+                detail_results = await asyncio.gather(*detail_tasks, return_exceptions=True)
+                
+                # Filter products by rating if min_rating is specified
+                filtered_products = []
+                if min_rating_float is not None:
+                    logger.info(f"🔍 Filtering products by minimum rating: {min_rating_float}")
+                    for i, result in enumerate(detail_results):
+                        if isinstance(result, Exception):
+                            logger.warning(f"⚠️ Error getting details for product {i+1}: {str(result)}")
+                            # Include products with errors (no rating info) unless we're being strict
+                            if min_rating_float <= 0:  # Only include if no minimum rating requirement
+                                filtered_products.append(basic_products[i])
+                        else:
+                            product_rating = result.get("rating", "")
+                            if product_rating:
+                                try:
+                                    rating_float = float(product_rating)
+                                    if rating_float >= min_rating_float:
+                                        filtered_products.append(basic_products[i])
+                                        logger.info(f"✅ Product '{result.get('title', '')[:50]}...' passed rating filter: {rating_float} >= {min_rating_float}")
+                                    else:
+                                        logger.info(f"❌ Product '{result.get('title', '')[:50]}...' filtered out: {rating_float} < {min_rating_float}")
+                                except ValueError:
+                                    logger.warning(f"⚠️ Invalid rating format for product: {product_rating}")
+                                    # Include products with invalid rating format unless we're being strict
+                                    if min_rating_float <= 0:
+                                        filtered_products.append(basic_products[i])
+                            else:
+                                logger.warning(f"⚠️ No rating found for product: {result.get('title', '')[:50]}...")
+                                # Include products with no rating unless we're being strict
+                                if min_rating_float <= 0:
+                                    filtered_products.append(basic_products[i])
+                else:
+                    # No rating filter, include all products
+                    filtered_products = basic_products
+                
+                logger.info(f"🎯 Rating filter result: {len(filtered_products)}/{len(basic_products)} products passed the filter")
+                
+                if not filtered_products:
+                    return {
+                        "search_term": keyword,
+                        "total_products": 0,
+                        "total_reviews": 0,
+                        "products": [],
+                        "success": True,
+                        "message": f"No products found with rating {min_rating_float}+ stars"
+                    }
+
+                # Concurrently fetch reviews for filtered products
+                logger.info(f"🔄 Fetching reviews for {len(filtered_products)} filtered products concurrently...")
+                tasks = [extract_product_reviews(product["url"], float('inf'), 3) for product in filtered_products]
                 review_results = await asyncio.gather(*tasks, return_exceptions=True)
 
                 # Process results and build optimized response
@@ -1773,8 +1836,8 @@ def create_app() -> Flask:
                         logger.error(f"❌ Error fetching reviews for product {i+1}: {str(result)}")
                         # Add product with no reviews
                         products.append({
-                            "title": basic_products[i]["title"],
-                            "url": basic_products[i]["url"],
+                            "title": filtered_products[i]["title"],
+                            "url": filtered_products[i]["url"],
                             "reviews_count": 0,
                             "reviews": [],
                             "success": False,
@@ -1784,14 +1847,15 @@ def create_app() -> Flask:
                         reviews_count = result.get("total_reviews_found", 0)
                         total_reviews += reviews_count
                         products.append({
-                            "title": basic_products[i]["title"],
-                            "url": basic_products[i]["url"],
+                            "title": filtered_products[i]["title"],
+                            "url": filtered_products[i]["url"],
                             "reviews_count": reviews_count,
                             "reviews": result.get("reviews", []),
                             "success": result.get("success", False)
                         })
 
-                logger.info(f"✅ Completed search-reviews for '{keyword}' - {len(products)} products with {total_reviews} total reviews")
+                filter_info = f" with rating filter {min_rating_float}+" if min_rating_float is not None else ""
+                logger.info(f"✅ Completed search-reviews for '{keyword}'{filter_info} - {len(products)} products with {total_reviews} total reviews")
 
                 # Generate Excel file
                 try:
