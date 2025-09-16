@@ -40,6 +40,11 @@ AUTO_AUTH_CONFIG = {
     "persistent_session": True
 }
 
+# ---------------- Timeout configuration ----------------
+DEFAULT_TIMEOUT = 60000  # 60 seconds for most operations
+NAVIGATION_TIMEOUT = 60000  # 60 seconds for navigation
+SELECTOR_TIMEOUT = 15000  # 15 seconds for waiting for selectors
+
 def create_app() -> Flask:
     app = Flask(__name__)
 
@@ -302,8 +307,8 @@ def create_app() -> Flask:
                 logger.error("❌ Could not find or click any sign-in elements")
                 return False
             
-            # Wait for sign-in page to load properly
-            await page.wait_for_load_state("networkidle")
+            # Wait for sign-in page to load properly - use domcontentloaded instead of networkidle
+            await page.wait_for_load_state("domcontentloaded")
             await human_delay(2000, 3000)
             
             # Final check for sign-in page
@@ -564,6 +569,26 @@ def create_app() -> Flask:
     # ---------------- Helper: Human-like delay ----------------
     async def human_delay(min_ms=1000, max_ms=3000):
         await asyncio.sleep(random.uniform(min_ms, max_ms) / 1000)
+    
+    # ---------------- Helper: Safe page navigation with timeout handling ----------------
+    async def safe_navigate(page, url, timeout=60000, max_retries=2):
+        """Navigate to URL with retry logic and better error handling"""
+        for attempt in range(max_retries + 1):
+            try:
+                logger.info(f"🌐 Navigating to {url} (attempt {attempt + 1}/{max_retries + 1})")
+                await page.goto(url, timeout=timeout)
+                await page.wait_for_load_state("domcontentloaded")
+                logger.info(f"✅ Successfully loaded {url}")
+                return True
+            except Exception as e:
+                logger.warning(f"⚠️ Navigation attempt {attempt + 1} failed: {str(e)}")
+                if attempt < max_retries:
+                    await human_delay(2000, 4000)  # Wait before retry
+                    continue
+                else:
+                    logger.error(f"❌ All navigation attempts failed for {url}")
+                    return False
+        return False
 
     # ---------------- Helper: Human-like scrolling ----------------
     async def human_scroll(page, max_scrolls=3):
@@ -620,8 +645,16 @@ def create_app() -> Flask:
             logger.info(f"   🎯 Target: {product_url}")
             logger.info(f"   📊 Max pages to scrape: {max_pages}")
             logger.info(f"   📈 Max reviews per page: {max_reviews}")
-            await page.goto(product_url, timeout=60000)
-            await page.wait_for_load_state("domcontentloaded")
+            # Use safe navigation with retry logic
+            if not await safe_navigate(page, product_url, timeout=60000):
+                logger.error(f"❌ Failed to navigate to product URL: {product_url}")
+                return {
+                    "url": product_url,
+                    "reviews": [],
+                    "success": False,
+                    "error": "Failed to load product page",
+                    "pages_scraped": 0
+                }
             await human_delay(2000, 4000)
 
             # Add human-like scrolling to load dynamic content
@@ -771,44 +804,9 @@ def create_app() -> Flask:
             # Navigate to dedicated reviews page for multi-page extraction
             reviews_loaded = False
 
-            # Method 1: Try clicking review link
-            try:
-                # Try multiple selectors for the review link
-                review_selectors = [
-                    "a#acrCustomerReviewLink",
-                    "a[href*='customerReviews']",
-                    "[data-hook='see-all-reviews-link']",
-                    "a.a-link-emphasis[href*='reviews']",
-                    "a[href*='product-reviews']"
-                ]
-
-                review_link = None
-                for selector in review_selectors:
-                    try:
-                        link = page.locator(selector)
-                        if await link.count() > 0:
-                            review_link = link
-                            logger.info(f"✅ Found review link with selector: {selector}")
-                            break
-                    except:
-                        continue
-
-                if review_link:
-                    await review_link.click()
-                    logger.info("✅ Clicked customer review link")
-
-                    # Wait for reviews to load
-                    await page.wait_for_load_state("networkidle")
-                    await human_delay(2000, 4000)
-
-                    # Sometimes reviews load in a modal or overlay
-                    await human_scroll(page, max_scrolls=1)
-                    reviews_loaded = True
-                else:
-                    logger.warning("⚠️ No review link found with any selector")
-
-            except Exception as e:
-                logger.warning(f"⚠️ Could not click review link: {str(e)}")
+            # Method 1: Skip clicking review link due to strict mode violations
+            # (Multiple elements with same ID cause Playwright strict mode errors)
+            logger.info("⏭️ Skipping review link click to avoid strict mode violations")
 
             # Method 2: Always try direct navigation for multi-page extraction (more reliable)
             if not reviews_loaded or max_pages > 1:
@@ -833,16 +831,17 @@ def create_app() -> Flask:
                             await page.wait_for_load_state("domcontentloaded")
                             await human_delay(3000, 5000)  # Increased wait time
 
-                            # Wait for network to be idle (JavaScript loading reviews)
-                            await page.wait_for_load_state("networkidle")
+                            # Wait for DOM to be ready (JavaScript loading reviews)
+                            await page.wait_for_load_state("domcontentloaded")
                             await human_delay(2000, 3000)
 
-                            # Try to wait for review elements to appear
+                            # Try to wait for review elements to appear with longer timeout
                             try:
-                                await page.wait_for_selector('[data-hook="review"], .review, .a-section.review', timeout=10000)
+                                await page.wait_for_selector('[data-hook="review"], .review, .a-section.review', timeout=SELECTOR_TIMEOUT)
                                 logger.info("✅ Review elements found on page")
-                            except:
-                                logger.warning("⚠️ Review elements not found within timeout")
+                            except Exception as e:
+                                logger.warning(f"⚠️ Review elements not found within timeout: {str(e)}")
+                                # Continue anyway - some pages might have different selectors
 
                             await human_scroll(page, max_scrolls=3)  # More scrolling to trigger loading
                             await human_delay(1000, 2000)
@@ -863,8 +862,8 @@ def create_app() -> Flask:
                 try:
                     logger.info(f"📖 SCRAPING PAGE {page_num}/{max_pages} | Current URL: {page.url}")
                     
-                    # Wait for page to load completely
-                    await page.wait_for_load_state("networkidle")
+                    # Wait for page to load completely - use domcontentloaded instead of networkidle
+                    await page.wait_for_load_state("domcontentloaded")
                     await human_delay(2000, 3000)
                     
                     # Scroll to load dynamic content
@@ -1155,6 +1154,10 @@ def create_app() -> Flask:
                 "Cache-Control": "max-age=0"
             }
         )
+        
+        # Set default timeouts for all operations
+        context.set_default_timeout(DEFAULT_TIMEOUT)  # 60 seconds for all operations
+        context.set_default_navigation_timeout(NAVIGATION_TIMEOUT)  # 60 seconds for navigation
 
         # Load saved session cookies if available
         auth_config = load_auth_config()
