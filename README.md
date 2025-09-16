@@ -85,18 +85,80 @@ python export_reviews_csv.py
 
 This extracts reviewer names, ratings, dates, review text, and helpful votes from all product sheets.
 
-### Testing Notes (Updated 2025-09-16)
+## __Architecture Overview__
 
-- Calling `/search` with "wireless earbuds" returned three Amazon browse/category URLs instead of product detail pages.
-- Calling `/reviews` with either those browse URLs or a known product detail URL returned HTTP 200 but 0 parsed reviews.
-- Likely reasons: Amazon frequently serves anti-bot HTML and the markup/selectors can change; reviews are often on dedicated URLs like `https://www.amazon.com/product-reviews/<ASIN>?pageNumber=...` and may require specific headers, referer, or cookies.
+This is a full-stack web application with a Flask backend API and vanilla JavaScript frontend for scraping Amazon product reviews.
 
-Suggested improvements:
-- Normalize incoming product URLs to a product-reviews URL using the ASIN when possible.
-- Update selectors to handle current Amazon review DOM variants.
-- Strengthen request headers (rotate User-Agent, add `Referer`, accept gzip/br) and consider basic cookie handling.
-- Consider backoff and clearer stop conditions for pagination.
+## __Core Technologies__
 
+- __Backend__: Python Flask with async Playwright for browser automation
+- __Frontend__: HTML/CSS/JavaScript (no framework)
+- __Scraping__: Playwright + BeautifulSoup for DOM parsing
+- __Data Export__: Excel (openpyxl) and CSV formats
+- __Browser Data__: Persistent Chrome browser storage for session management
+
+## __Key Technical Components__
+
+### __1. Backend Logic (Flask API)__
+
+- __Routes__: `/search-reviews` (main endpoint), `/search`, `/product-reviews`, `/download-excel`, `/download-csv`
+
+- __Scraping Strategy__:
+
+  - Uses Playwright with headless Chrome
+  - Implements anti-detection measures (user-agent rotation, viewport randomization, stealth mode)
+  - Human-like behavior simulation (random delays, scrolling, mouse movements)
+  - Multiple fallback selectors for Amazon's changing DOM structure
+
+- __Data Processing__: Concurrent review extraction using asyncio
+
+- __Export__: Automatic Excel generation with product-organized sheets
+
+### __2. Frontend Logic (JavaScript)__
+
+- __Search Interface__: Simple form with loading states and error handling
+- __Results Display__: Product cards with expandable review lists
+- __API Integration__: Fetches from `/search-reviews` endpoint
+- __UX Features__: Keyboard shortcuts (Ctrl+K for search, Escape to clear), star ratings display
+
+### __3. Scraping Logic__
+
+- __Product Discovery__: Searches Amazon and extracts top 3 product URLs
+
+- __Review Extraction__:
+
+  - Tries product page first, then navigates to dedicated reviews page
+  - Handles pagination and dynamic loading
+  - Extracts: reviewer name, rating, date, text, helpful votes
+
+- __Error Handling__: Graceful fallbacks when selectors fail or pages don't load
+
+### __4. Data Export Logic__
+
+- __Excel Generation__: Creates multi-sheet workbooks with summary and product-specific sheets
+- __CSV Conversion__: Python script to extract reviews from Excel to CSV format
+- __File Management__: Timestamped files in `/exports` directory
+
+### __5. Browser Automation__
+
+- __Playwright Setup__: Non-headless for debugging, with extensive anti-bot configuration
+- __Session Persistence__: Uses `browser_data/` directory for Chrome profile storage
+- __Stealth Measures__: Removes webdriver traces, randomizes fingerprints
+
+## __Workflow__
+
+1. User searches via frontend → Flask API receives request
+2. Backend searches Amazon → extracts product URLs
+3. Concurrent scraping of reviews from each product
+4. Data aggregation and Excel export
+5. Frontend displays results with download links
+
+## __Challenges Addressed__
+
+- Amazon's anti-scraping measures (bot detection, changing selectors)
+- Dynamic content loading (scrolling, JavaScript rendering)
+- Rate limiting (delays, concurrent processing limits)
+- Data consistency (multiple selector fallbacks)
 ### Project Structure
 
 ```
