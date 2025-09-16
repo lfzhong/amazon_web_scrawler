@@ -2,6 +2,9 @@
 
 A full-stack web application for searching Amazon products and scraping detailed reviews. Features a Flask backend API, web-based frontend interface, and export functionality for review data.
 
+<img width="1391" height="743" alt="Screenshot 2025-09-16 at 11 26 39 AM" src="https://github.com/user-attachments/assets/21a1ec36-a177-4ffa-8966-358463fff05a" />
+
+
 ### Features
 
 - **Product Search**: Search Amazon for products by keyword
