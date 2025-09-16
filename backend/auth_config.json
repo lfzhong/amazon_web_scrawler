@@ -1,0 +1,9 @@
+{
+  "enabled": true,
+  "credentials": {
+    "email": "liueva66@gmail.com",
+    "password": "Lfz66luck!"
+  },
+  "session_file": "amazon_session.json",
+  "persistent_session": true
+}

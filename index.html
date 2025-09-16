@@ -11,6 +11,9 @@
         <header>
             <h1>Amazon Product Search</h1>
             <p>Search for products and view detailed reviews</p>
+            <div class="auth-controls">
+                <button id="authToggleBtn" class="auth-toggle-btn">⚙️ Authentication Settings</button>
+            </div>
         </header>
 
         <div class="search-section">
@@ -36,8 +39,83 @@
         </div>
 
         <div id="errorMessage" class="error-message hidden"></div>
+
+        <!-- Authentication Configuration Modal -->
+        <div id="authModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🔐 Authentication Settings</h2>
+                    <button id="closeModal" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="auth-status" id="authStatus">
+                        <div class="status-indicator" id="statusIndicator">🔓 Not Authenticated</div>
+                    </div>
+                    
+                    <form id="authForm">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="enableAuth"> Enable Auto Authentication
+                            </label>
+                            <p class="help-text">Automatically log in to Amazon for access to more features and personal reviews</p>
+                        </div>
+                        
+                        <div id="authFields" class="auth-fields hidden">
+                            <div class="form-group">
+                                <label for="emailInput">Amazon Email:</label>
+                                <input type="email" id="emailInput" placeholder="your.email@example.com" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="passwordInput">Amazon Password:</label>
+                                <input type="password" id="passwordInput" placeholder="Enter your password" required>
+                                <p class="help-text">Credentials are stored locally on your machine by the backend. Do not commit them to source control.</p>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="persistentSession" checked> Remember login session
+                                </label>
+                                <p class="help-text">Keep session active between browser restarts</p>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-actions">
+                            <button type="button" id="testAuthBtn" class="test-btn" disabled>🧪 Test Authentication</button>
+                            <button type="button" id="saveAuthBtn" class="save-btn">💾 Save Settings</button>
+                            <button type="button" id="clearAuthBtn" class="clear-btn">🗑️ Clear All Data</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="loading-overlay hidden">
+            <div class="loading-content">
+                <div class="spinner-large"></div>
+                <p id="loadingText">Processing...</p>
+            </div>
+        </div>
     </div>
 
+    <script>
+        // Immediate fix: Hide loading overlay as soon as possible
+        (function() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+        })();
+    </script>
     <script src="script.js"></script>
+    <script>
+        // Fallback: Ensure loading overlay is hidden even if main script fails
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+        });
+    </script>
 </body>
 </html>

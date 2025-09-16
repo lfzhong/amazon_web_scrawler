@@ -12,7 +12,12 @@ import webbrowser
 
 def check_venv():
     """Check if virtual environment is activated"""
-    if not hasattr(sys, 'real_prefix') and not (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+    # Check for venv (newer method) or virtualenv (older method)
+    in_venv = (hasattr(sys, 'real_prefix') or 
+               (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) or
+               os.environ.get('VIRTUAL_ENV') is not None)
+    
+    if not in_venv:
         print("❌ Please activate the virtual environment first:")
         print("   source venv/bin/activate")
         sys.exit(1)
@@ -44,7 +49,7 @@ def start_backend():
     try:
         # Start backend in background
         backend_process = subprocess.Popen([sys.executable, "backend/app.py"])
-        print("✅ Backend server started on http://localhost:5001")
+        print("✅ Backend server started on http://localhost:5000")
         return backend_process
     except Exception as e:
         print(f"❌ Failed to start backend: {e}")
@@ -56,12 +61,12 @@ def open_frontend():
     try:
         # Give server a moment to start
         time.sleep(3)
-        # Open index.html in default browser
-        webbrowser.open(f"file://{os.path.abspath('index.html')}")
+        # Open frontend via Flask backend route
+        webbrowser.open("http://localhost:5000")
         print("✅ Frontend opened in browser")
     except Exception as e:
         print(f"⚠️ Could not open browser automatically: {e}")
-        print(f"   Please manually open: file://{os.path.abspath('index.html')}")
+        print(f"   Please manually open: http://localhost:5000")
 
 def main():
     print("🎯 Amazon Web Crawler Launcher")
@@ -83,7 +88,7 @@ def main():
     open_frontend()
 
     print("\n🎉 Application is ready!")
-    print("   Backend: http://localhost:5001")
+    print("   Backend: http://localhost:5000")
     print("   Frontend: Opened in browser")
     print("\n💡 To test: Enter a search term like 'wireless headphones' in the search box")
     print("   Press Ctrl+C to stop the server")
